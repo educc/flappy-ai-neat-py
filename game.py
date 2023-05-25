@@ -54,7 +54,7 @@ def start_game_loop():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit(0)
-            bird.makeJumpIfNecessary(GameState(event, None, None))
+            bird.jump(GameState(event, None, None))
 
         # Actualización de los sprites
         all_sprites.update()

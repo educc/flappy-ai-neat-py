@@ -38,7 +38,7 @@ class Bird(pygame.sprite.Sprite):
     def flap(self):
         self.velocity = -8
 
-    def makeJumpIfNecessary(self, state: GameState):
+    def jump(self, state: GameState):
         if self.brain.shouldJump(state):
             self.flap()
 
