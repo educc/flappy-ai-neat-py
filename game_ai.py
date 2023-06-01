@@ -1,14 +1,15 @@
+import pickle
 import neat
 import pygame
 from pygame import sprite
 import random
 from sprites import Bird, GameState, Pipe
-from brain import BirdBrain, NeuralNetBrain, RandomBrain
+from brain import BirdBrain, NeuralNetBrain, RandomBrain, NeuralNetWithAllPipesBrain
 
 # Dimensiones de la ventana del juego
 WIDTH = 288
 HEIGHT = 512
-FRAME_RATE = 60
+FRAME_RATE = 500
 GAP_BETWEEN_PIPES = 100
 
 # Colores
@@ -22,6 +23,8 @@ class FlappyBirdNeat:
         pygame.init()
 
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        # self.screen = pygame.display.set_mode(  (WIDTH, HEIGHT), pygame.RESIZABLE)
+
         self.clock = pygame.time.Clock()
 
         # Carga de recursos
@@ -33,11 +36,13 @@ class FlappyBirdNeat:
         self.font = pygame.font.Font(None, 36)
         self.all_sprites = pygame.sprite.Group()
         self.generation = 0
+        self.max_score = 0
 
     def show_text(self, score: int):
         texts = [
             f"Generación: {self.generation}",
             f"Puntaje: {score}",
+            f"Puntaje máx: {self.max_score}",
         ]
         y = 0
         for text in texts:
@@ -47,6 +52,37 @@ class FlappyBirdNeat:
             my_rect = surface.get_rect(center=(WIDTH // 2, y))
 
             self.screen.blit(surface, my_rect)
+
+    def run_with_genome(self, genome, config):
+        pipes = pygame.sprite.Group()
+        self.all_sprites = pygame.sprite.Group()
+
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+        bird = Bird(HEIGHT, self.bird_img, NeuralNetBrain(net))
+        self.all_sprites.add(bird)
+
+        score = 0
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit(0)
+                # if event.type == pygame.VIDEORESIZE:
+                #     # There's some code to add back window content here.
+                #     surface = pygame.display.set_mode((event.w, event.h),
+                #                                       pygame.RESIZABLE)
+
+            bird.jump(GameState(None, bird, pipes))
+            self.all_sprites.update()
+
+            self.__add_new_pipes(pipes)
+            collided = self.__check_collisions(bird, pipes)
+            if collided:
+                self.max_score = max(self.max_score, score)
+
+            self.__remove_pipes(pipes, self.all_sprites)
+
+            score = score + 1
+            self.__draw(score)
 
     def eval_genomes(self, genomes, config):
         # Grupos de sprites
@@ -62,6 +98,8 @@ class FlappyBirdNeat:
             net = neat.nn.FeedForwardNetwork.create(genome, config)
 
             bird = Bird(HEIGHT, self.bird_img, NeuralNetBrain(net))
+            # bird = Bird(HEIGHT, self.bird_img, NeuralNetWithAllPipesBrain(net)) # this does not work
+
             bird.genome = genome
             birds.append(bird)
 
@@ -91,6 +129,7 @@ class FlappyBirdNeat:
                     bird.genome.fitness = score
                     birds.remove(bird)
                     self.all_sprites.remove(bird)
+                    self.max_score = max(self.max_score, score)
 
             self.__remove_pipes(pipes, self.all_sprites)
 
@@ -167,8 +206,39 @@ def run_game_and_train():
 
     # Display the winning genome.
     print('\nBest genome:\n{!s}'.format(winner))
+    with open("winner.pkl", "wb") as f:
+        pickle.dump(winner, f)
+        f.close()
 # end-def
 
 
+def run_game_with_genomefile(genomeFilename: str):
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         'net.config')
+    genome = None
+    with open(genomeFilename, "rb") as f:
+        genome = pickle.load(f)
+    #
+    game = FlappyBirdNeat()
+    game.run_with_genome(genome, config)
+#
+
+
+def main(genomeFilename: str):
+
+    if genomeFilename:
+        run_game_with_genomefile(genomeFilename)
+    else:
+        run_game_and_train()
+
+
 if __name__ == "__main__":
-    run_game_and_train()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='FlappyBird game, training AI.')
+    parser.add_argument('--genome',   help='filename of the genome to load')
+
+    args = parser.parse_args()
+    main(args.genome)

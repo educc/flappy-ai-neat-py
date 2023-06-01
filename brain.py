@@ -68,3 +68,26 @@ class NeuralNetBrain:
                 elif pipe.rect.x < closest_pipe.rect.x:
                     closest_pipe = pipe
         return closest_pipe
+
+
+class NeuralNetWithAllPipesBrain:
+    BirdBrain
+
+    def __init__(self, net: FeedForwardNetwork):
+        self.net = net
+
+    def shouldJump(self, state: GameState):
+        if not state.bird or not state.pipes or len(state.pipes) < 6:
+            return False
+
+        pipes = []
+        for pipe in state.pipes:
+            pipes.append(pipe.rect.x)
+            pipes.append(pipe.rect.y)
+
+        inputForNet = [state.bird.rect.x,  state.bird.rect.y] + pipes
+        # print("inputForNet: ", inputForNet)
+        output = self.net.activate(inputForNet)
+        if output[0] >= 0.5:
+            return True
+        return False
