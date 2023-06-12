@@ -9,7 +9,7 @@ from brain import BirdBrain, NeuralNetBrain, RandomBrain, NeuralNetWithAllPipesB
 # Dimensiones de la ventana del juego
 WIDTH = 288
 HEIGHT = 512
-FRAME_RATE = 500
+FRAME_RATE = 120
 GAP_BETWEEN_PIPES = 100
 
 # Colores
@@ -38,12 +38,12 @@ class FlappyBirdNeat:
         self.generation = 0
         self.max_score = 0
 
-    def show_text(self, score: int):
+    def show_text(self, score: int, my_texts=[]):
         texts = [
             f"Generación: {self.generation}",
             f"Puntaje: {score}",
             f"Puntaje máx: {self.max_score}",
-        ]
+        ] + my_texts
         y = 0
         for text in texts:
             y += 30
@@ -93,6 +93,7 @@ class FlappyBirdNeat:
         self.generation += 1
 
         birds = []
+        poblation = len(genomes)
         for genome_id, genome in genomes:
             genome.fitness = 0
             net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -138,15 +139,16 @@ class FlappyBirdNeat:
             running = len(birds) > 0
             # print(f"Running: {running} - Score: {score} - Generación: {self.generation}")
 
-            self.__draw(score)
+            texts = [f"Aves {len(birds)}/{poblation}"]
+            self.__draw(score, texts)
 
         # pygame.quit()
 
-    def __draw(self, score: int):
+    def __draw(self, score: int, texts=[]):
         # Dibujado de la pantalla
         self.screen.blit(self.background_img, (0, 0))
         self.all_sprites.draw(self.screen)
-        self.show_text(score)
+        self.show_text(score, texts)
         pygame.display.flip()
         self.clock.tick(FRAME_RATE)
 
